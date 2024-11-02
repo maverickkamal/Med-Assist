@@ -124,6 +124,13 @@ const App = () => {
 
   return (
     <div className="flex h-screen bg-zinc-900 text-white">
+      {/* Fixed MedAssist Title - Always visible */}
+      <div className="fixed top-0 left-0 p-4 z-40">
+        <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-l from-purple-600 via-blue-400 to-purple-600 text-transparent bg-clip-text">
+          MedAssist
+        </h1>
+      </div>
+
       <div className="relative">
         <div className={`fixed left-0 top-0 h-full w-[280px] md:w-80 transition-transform duration-300 z-30
           ${isSidebarPinned ? 'translate-x-0' : '-translate-x-[calc(100%-16px)] hover:translate-x-0'}`}
@@ -141,12 +148,8 @@ const App = () => {
               <ChevronRight size={16} />
             </button>
 
-            {/* MedAssist Title */}
-            <div className="p-4">
-              <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-l from-purple-600 via-blue-400 to-purple-600 text-transparent bg-clip-text">
-                MedAssist
-              </h1>
-            </div>
+            {/* Spacer for fixed MedAssist title */}
+            <div className="h-16" />
 
             {/* Main Sidebar Content */}
             <div className="flex-1 overflow-auto">
@@ -182,7 +185,7 @@ const App = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 ml-4 md:ml-20"> 
+      <div className="flex-1 flex flex-col min-w-0 pl-16 md:pl-20"> 
         <Header 
           isStarred={isCurrentSessionStarred} 
           onStarClick={handleStarClick}
