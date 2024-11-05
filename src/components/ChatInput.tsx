@@ -1,5 +1,7 @@
 import { useState, useRef } from 'react';
-import { Paperclip, Image as ImageIcon, Send, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Paperclip, Image, Send, Sparkles } from 'lucide-react';
 
 interface ChatInputProps {
   value: string;
@@ -7,14 +9,15 @@ interface ChatInputProps {
   onSend: (content: string, files?: File[], images?: File[]) => void;
 }
 
-export const ChatInput = ({ value, onChange, onSend }: ChatInputProps) => {
-  const [isInputFocused, setIsInputFocused] = useState(false);
+export function ChatInput({ value, onChange, onSend }: ChatInputProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [images, setImages] = useState<File[]>([]);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSendMessage = () => {
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (value.trim() || files.length || images.length) {
       onSend(value, files, images);
       setFiles([]);
@@ -22,134 +25,111 @@ export const ChatInput = ({ value, onChange, onSend }: ChatInputProps) => {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (e.target.accept.includes('image')) {
+      setImages(prev => [...prev, ...selectedFiles]);
+    } else {
+      setFiles(prev => [...prev, ...selectedFiles]);
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedFiles = Array.from(e.target.files || []);
-    setFiles(prev => [...prev, ...uploadedFiles]);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadedImages = Array.from(e.target.files || []);
-    setImages(prev => [...prev, ...uploadedImages]);
-    if (imageInputRef.current) imageInputRef.current.value = '';
-  };
-
-  const removeFile = (index: number) => {
-    setFiles(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
-
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-10">
-      <div className="max-w-2xl mx-auto px-4">
-        <div className="relative group mb-6">
+    <div className="p-6 border-t border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-900/50">
+      <div className="max-w-3xl mx-auto">
+        <div className="relative group">
+          {/* Animated Border Background */}
           <div className={`absolute -inset-0.5 bg-gradient-to-r from-purple-600/50 via-blue-400/50 to-purple-600/50 rounded-xl blur opacity-30 group-hover:opacity-40 transition duration-1000 ${isInputFocused ? 'opacity-75' : ''}`} />
           
-          <div className="relative bg-zinc-900/50 rounded-lg p-1 backdrop-blur-xl">
-            {(files.length > 0 || images.length > 0) && (
-              <div className="px-4 pt-2 flex flex-wrap gap-2">
-                {files.map((file, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-zinc-800/50 rounded-md px-2 py-1 group/item">
-                    <Paperclip size={14} className="text-zinc-400" />
-                    <span className="text-xs text-zinc-300">{file.name}</span>
-                    <button 
-                      onClick={() => removeFile(index)}
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity ml-1 hover:text-zinc-200"
-                    >
-                      <X size={14} className="text-zinc-400" />
-                    </button>
-                  </div>
-                ))}
-                {images.map((image, index) => (
-                  <div key={index} className="flex items-center gap-2 bg-zinc-800/50 rounded-md px-2 py-1 group/item">
-                    <ImageIcon size={14} className="text-zinc-400" />
-                    <span className="text-xs text-zinc-300">{image.name}</span>
-                    <button 
-                      onClick={() => removeImage(index)}
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity ml-1 hover:text-zinc-200"
-                    >
-                      <X size={14} className="text-zinc-400" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-            
+          {/* Main Input Container */}
+          <div className="relative bg-zinc-900 rounded-lg p-1 ring-1 ring-zinc-700/50 backdrop-blur-xl">
             <div className="relative flex items-end">
               <textarea
-                placeholder="How can MedAssist help you today?"
+                placeholder="How can I help you today?"
                 value={value}
                 onChange={onChange}
                 onFocus={() => setIsInputFocused(true)}
                 onBlur={() => setIsInputFocused(false)}
-                onKeyDown={handleKeyPress}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
                 className="min-h-[52px] max-h-[200px] w-full bg-transparent px-4 py-3 text-sm text-white placeholder:text-zinc-400 focus:outline-none resize-none"
                 style={{ scrollbarWidth: 'none' }}
               />
 
+              {/* Right Side Actions */}
               <div className="flex items-center gap-2 pr-2 pb-2">
+                {/* Upload Buttons */}
                 <div className="flex gap-1">
                   <input
-                    type="file"
                     ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    className="hidden"
+                    type="file"
                     multiple
-                    accept=".pdf,.doc,.docx,.txt,.rtf,.csv,.xlsx,.xls,.ppt,.pptx"
+                    className="hidden"
+                    onChange={handleFileChange}
                   />
-                  <button 
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                  <button
+                    type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors"
                   >
                     <Paperclip size={18} className="text-zinc-400 hover:text-zinc-300" />
                   </button>
-                  
-                  <input
-                    type="file"
-                    ref={imageInputRef}
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    multiple
-                    accept="image/*"
-                  />
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => imageInputRef.current?.click()}
                     className="p-1.5 hover:bg-zinc-800 rounded-md transition-colors"
                   >
-                    <ImageIcon size={18} className="text-zinc-400 hover:text-zinc-300" />
+                    <Image size={18} className="text-zinc-400 hover:text-zinc-300" />
                   </button>
                 </div>
 
+                {/* Divider */}
                 <div className="w-px h-6 bg-zinc-700/50" />
 
+                {/* Send Button */}
                 <button 
-                  onClick={handleSendMessage}
+                  onClick={handleSubmit}
                   className={`p-1.5 rounded-md transition-all duration-200 flex items-center gap-2
-                    ${(value.trim() || files.length > 0 || images.length > 0)
+                    ${value.trim() 
                       ? 'bg-purple-500 hover:bg-purple-600 text-white' 
                       : 'bg-zinc-800 text-zinc-400'}`}
                 >
-                  <Send size={18} className={(value.trim() || files.length > 0 || images.length > 0) ? 'text-white' : 'text-zinc-400'} />
+                  <Send size={18} className={value.trim() ? 'text-white' : 'text-zinc-400'} />
                 </button>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="flex items-center justify-between px-4 py-2 border-t border-zinc-800/50 text-xs">
+              <div className="flex items-center gap-2">
+                <Sparkles size={14} className="text-purple-400" />
+                <span className="text-zinc-400">MedAssist AI</span>
+                <span className="px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 text-xs">Beta</span>
+              </div>
+              <div className="flex items-center gap-2 text-zinc-400">
+                <span>Medical AI Assistant</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="text-center text-xs text-zinc-500 mb-4">
+        {/* Helpful Text */}
+        <div className="mt-3 text-center text-xs text-zinc-500">
           Press Enter to send, Shift + Enter for new line
         </div>
       </div>
     </div>
   );
-};
+}

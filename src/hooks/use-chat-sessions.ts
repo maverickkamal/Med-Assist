@@ -1,31 +1,88 @@
 import { useState, useEffect } from 'react';
-import { ChatSession, Message } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { Message } from '@/types/chat';
+
+interface ChatSession {
+  id: string;
+  title: string;
+  messages: Message[];
+  isStarred: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface ChatSessionDisplay {
+  id: string;
+  title: string;
+  daysAgo: string;
+}
 
 export function useChatSessions() {
-  const [sessions, setSessions] = useState<ChatSession[]>(() => {
-    const saved = localStorage.getItem('chat-sessions');
-    return saved ? JSON.parse(saved, (key, value) => {
-      if (key === 'createdAt' || key === 'updatedAt' || key === 'timestamp') {
-        return new Date(value);
-      }
-      return value;
-    }) : [];
-  });
-  
+  const { user } = useAuth();
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load sessions from localStorage
+  const loadSessions = async () => {
+    if (!user) return;
+    
+    try {
+      const storedSessions = localStorage.getItem(`chat_sessions_${user.id}`);
+      const storedCurrentId = localStorage.getItem(`current_session_${user.id}`);
+      
+      if (storedSessions) {
+        const parsedSessions = JSON.parse(storedSessions, (key, value) => {
+          if (key === 'createdAt' || key === 'updatedAt' || key === 'timestamp') {
+            return new Date(value);
+          }
+          return value;
+        });
+
+        setSessions(parsedSessions);
+
+        // Only restore current session if it exists in the loaded sessions
+        if (storedCurrentId && parsedSessions.some((s: ChatSession) => s.id === storedCurrentId)) {
+          setCurrentSessionId(storedCurrentId);
+        }
+      }
+      setIsInitialized(true);
+    } catch (error) {
+      console.error('Error loading sessions:', error);
+      setIsInitialized(true);
+    }
+  };
+
+  // Initialize sessions when component mounts or user changes
   useEffect(() => {
-    localStorage.setItem('chat-sessions', JSON.stringify(sessions));
-  }, [sessions]);
+    loadSessions();
+  }, [user]);
 
-  const createNewSession = (firstMessage: Message) => {
+  // Save sessions to localStorage whenever they change
+  useEffect(() => {
+    if (!user || !isInitialized) return;
+
+    try {
+      localStorage.setItem(`chat_sessions_${user.id}`, JSON.stringify(sessions));
+      
+      if (currentSessionId) {
+        localStorage.setItem(`current_session_${user.id}`, currentSessionId);
+      } else {
+        localStorage.removeItem(`current_session_${user.id}`);
+      }
+    } catch (error) {
+      console.error('Error saving sessions:', error);
+    }
+  }, [sessions, currentSessionId, user, isInitialized]);
+
+  const createNewSession = (firstMessage?: Message) => {
     const newSession: ChatSession = {
       id: Date.now().toString(),
-      title: firstMessage.content.slice(0, 30) + (firstMessage.content.length > 30 ? '...' : ''),
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      title: firstMessage?.content.slice(0, 30) + '...' || 'New Chat',
+      messages: firstMessage ? [firstMessage] : [],
       isStarred: false,
-      messages: [firstMessage]
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     setSessions(prev => [newSession, ...prev]);
@@ -34,60 +91,26 @@ export function useChatSessions() {
   };
 
   const updateSession = (sessionId: string, messages: Message[]) => {
-    setSessions(prev => prev.map(session => 
-      session.id === sessionId 
-        ? { 
-            ...session, 
-            messages,
-            updatedAt: new Date()
-          }
-        : session
-    ));
+    setSessions(prev => prev.map(session => {
+      if (session.id === sessionId) {
+        return {
+          ...session,
+          messages,
+          title: messages[0]?.content.slice(0, 30) + '...' || 'New Chat',
+          updatedAt: new Date()
+        };
+      }
+      return session;
+    }));
   };
 
   const toggleStar = (sessionId: string) => {
-    setSessions(prev => prev.map(session =>
-      session.id === sessionId
-        ? { ...session, isStarred: !session.isStarred }
-        : session
-    ));
-  };
-
-  const getFormattedDate = (date: Date) => {
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-      return 'Today';
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else {
-      return `${diffDays} days ago`;
-    }
-  };
-
-  const recentChats = sessions
-    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-    .map(session => ({
-      id: session.id,
-      title: session.title,
-      daysAgo: getFormattedDate(session.updatedAt)
+    setSessions(prev => prev.map(session => {
+      if (session.id === sessionId) {
+        return { ...session, isStarred: !session.isStarred };
+      }
+      return session;
     }));
-
-  const starredChats = sessions
-    .filter(session => session.isStarred)
-    .map(session => ({
-      id: session.id,
-      title: session.title
-    }));
-
-  const updateSessionTitle = (sessionId: string, newTitle: string) => {
-    setSessions(prev => prev.map(session =>
-      session.id === sessionId
-        ? { ...session, title: newTitle }
-        : session
-    ));
   };
 
   const deleteSession = (sessionId: string) => {
@@ -97,24 +120,35 @@ export function useChatSessions() {
     }
   };
 
+  const updateSessionTitle = (sessionId: string, newTitle: string) => {
+    setSessions(prev => prev.map(session => {
+      if (session.id === sessionId) {
+        return { ...session, title: newTitle };
+      }
+      return session;
+    }));
+  };
+
   const startNewChat = () => {
     setCurrentSessionId(null);
   };
 
-  // Load last session ID from localStorage
-  useEffect(() => {
-    const lastSessionId = localStorage.getItem('last-session-id');
-    if (lastSessionId) {
-      setCurrentSessionId(lastSessionId);
-    }
-  }, []);
+  // Filter sessions for display
+  const recentChats = sessions
+    .filter(session => !session.isStarred)
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+    .map(session => ({
+      id: session.id,
+      title: session.title,
+      daysAgo: Math.floor((Date.now() - session.updatedAt.getTime()) / (1000 * 60 * 60 * 24)).toString()
+    }));
 
-  // Save current session ID to localStorage
-  useEffect(() => {
-    if (currentSessionId) {
-      localStorage.setItem('last-session-id', currentSessionId);
-    }
-  }, [currentSessionId]);
+  const starredChats = sessions
+    .filter(session => session.isStarred)
+    .map(session => ({
+      id: session.id,
+      title: session.title
+    }));
 
   return {
     sessions,
@@ -128,5 +162,7 @@ export function useChatSessions() {
     updateSessionTitle,
     deleteSession,
     startNewChat,
+    loadSessions,
+    isInitialized
   };
 } 
