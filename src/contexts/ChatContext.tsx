@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { Message } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
+import { startNewSession } from '../services/api';
 
 interface ChatContextType {
   messages: Message[];
@@ -12,6 +13,7 @@ interface ChatContextType {
   createNewSession: (firstMessage?: Message) => string;
   updateSession: (sessionId: string, messages: Message[]) => void;
   isLoading: boolean;
+  backendSessionId: string | null;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
+  const [backendSessionId, setBackendSessionId] = useState<string | null>(null);
   
   const {
     sessions,
@@ -67,11 +70,24 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentSessionId, isInitialized, isLoading]);
 
+  // Initialize backend session when starting new chat
+  const initializeBackendSession = async () => {
+    try {
+      const sessionResponse = await startNewSession();
+      setBackendSessionId(sessionResponse.session_id);
+      return sessionResponse.session_id;
+    } catch (error) {
+      console.error('Failed to start new session:', error);
+      return null;
+    }
+  };
+
   // Handle navigation state
   useEffect(() => {
     const from = location.state?.from;
-    if (from && from !== '/chat' && !location.search.includes('chat=')) {
+    if (!from) {
       startNewChat();
+      initializeBackendSession(); // Initialize new backend session
     }
   }, [location]);
 
@@ -81,20 +97,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const messages = currentSession?.messages || [];
 
-  const setMessages = (newMessages: Message[]) => {
+  // Update setMessages to handle backend session
+  const setMessages = async (newMessages: Message[]) => {
     if (currentSessionId) {
       updateSession(currentSessionId, newMessages);
     } else if (newMessages.length > 0) {
+      // Ensure we have a backend session before creating frontend session
+      if (!backendSessionId) {
+        await initializeBackendSession();
+      }
       const newSessionId = createNewSession(newMessages[0]);
       updateSession(newSessionId, newMessages);
-      // Update URL with new session ID
       navigate(`?chat=${newSessionId}`, { replace: true });
     }
   };
 
-  const resetChat = () => {
+  // Update resetChat to handle backend session
+  const resetChat = async () => {
     startNewChat();
-    // Remove chat ID from URL
+    await initializeBackendSession(); // Initialize new backend session
     navigate('', { replace: true });
   };
 
@@ -106,7 +127,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       currentSessionId,
       createNewSession,
       updateSession,
-      isLoading
+      isLoading,
+      backendSessionId
     }}>
       {children}
     </ChatContext.Provider>

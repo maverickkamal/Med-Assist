@@ -53,9 +53,8 @@ export function Sidebar({
     }
   };
 
-  const handleNewChat = () => {
-    resetChat();
-    onNewChat();
+  const handleNewChat = async () => {
+    await resetChat();
   };
 
   return (
