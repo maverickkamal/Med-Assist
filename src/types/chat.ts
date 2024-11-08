@@ -15,4 +15,5 @@ export interface ChatSession {
   isStarred: boolean;
   createdAt: Date;
   updatedAt: Date;
+  backendSessionId?: string;
 } 

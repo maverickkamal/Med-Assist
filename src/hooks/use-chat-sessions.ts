@@ -9,6 +9,7 @@ interface ChatSession {
   isStarred: boolean;
   createdAt: Date;
   updatedAt: Date;
+  backendSessionId?: string;
 }
 
 interface ChatSessionDisplay {
@@ -75,14 +76,15 @@ export function useChatSessions() {
     }
   }, [sessions, currentSessionId, user, isInitialized]);
 
-  const createNewSession = (firstMessage?: Message) => {
+  const createNewSession = (firstMessage?: Message, backendSessionId?: string) => {
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: firstMessage?.content.slice(0, 30) + '...' || 'New Chat',
       messages: firstMessage ? [firstMessage] : [],
       isStarred: false,
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      backendSessionId
     };
 
     setSessions(prev => [newSession, ...prev]);
@@ -90,14 +92,15 @@ export function useChatSessions() {
     return newSession.id;
   };
 
-  const updateSession = (sessionId: string, messages: Message[]) => {
+  const updateSession = (sessionId: string, messages: Message[], backendSessionId?: string) => {
     setSessions(prev => prev.map(session => {
       if (session.id === sessionId) {
         return {
           ...session,
           messages,
           title: messages[0]?.content.slice(0, 30) + '...' || 'New Chat',
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          backendSessionId: backendSessionId || session.backendSessionId
         };
       }
       return session;
@@ -133,6 +136,13 @@ export function useChatSessions() {
     setCurrentSessionId(null);
   };
 
+  // Add resetChat function
+  const resetChat = async () => {
+    setCurrentSessionId(null);
+    // Clear current session and prepare for a new one
+    return Promise.resolve(); // Return a promise to maintain async compatibility
+  };
+
   // Filter sessions for display
   const recentChats = sessions
     .filter(session => !session.isStarred)
@@ -162,6 +172,7 @@ export function useChatSessions() {
     updateSessionTitle,
     deleteSession,
     startNewChat,
+    resetChat, // Add resetChat to the returned object
     loadSessions,
     isInitialized
   };

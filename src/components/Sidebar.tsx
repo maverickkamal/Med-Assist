@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,7 @@ export function Sidebar({
   const { user, signOut } = useAuth();
   const { resetChat } = useChat();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSignOut = async () => {
     try {
@@ -56,6 +57,10 @@ export function Sidebar({
   const handleNewChat = async () => {
     await resetChat();
   };
+
+  // Only show first 5 recent chats in sidebar
+  const recentChatsPreview = recentChats.slice(0, 5);
+  const hasMoreChats = recentChats.length > 5;
 
   return (
     <div className="flex flex-col h-full">
@@ -138,11 +143,11 @@ export function Sidebar({
         )}
 
         {/* Recent Chats */}
-        {recentChats.length > 0 && (
+        {recentChatsPreview.length > 0 && (
           <div>
             <h3 className="text-xs font-semibold text-zinc-400 mb-2">RECENT CHATS</h3>
             <div className="space-y-1">
-              {recentChats.map((chat) => (
+              {recentChatsPreview.map((chat) => (
                 <div
                   key={chat.id}
                   className="group flex items-center"
@@ -168,6 +173,19 @@ export function Sidebar({
                 </div>
               ))}
             </div>
+
+            {/* View History Link - only show if there are more chats */}
+            {hasMoreChats && (
+              <Link to="/history" className="block mt-2">
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-center text-xs text-zinc-400 hover:text-white"
+                >
+                  View {recentChats.length - 5} more chats
+                </Button>
+              </Link>
+            )}
           </div>
         )}
       </div>
