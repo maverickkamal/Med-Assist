@@ -1,17 +1,21 @@
 import { useNavigate } from 'react-router-dom';
-import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { Layout } from '@/components/Layout';
 import { ArrowLeft, Star, Trash2 } from 'lucide-react';
+import { useChatStore } from '@/store/chat-store';
 
 export function History() {
   const navigate = useNavigate();
   const { 
-    recentChats, 
+    recentChats: getRecentChats, 
     toggleStar, 
-    deleteSession 
-  } = useChatSessions();
+    deleteSession,
+    setCurrentSession
+  } = useChatStore();
+
+  const recentChats = getRecentChats();
 
   const handleChatOpen = (chatId: string) => {
+    setCurrentSession(chatId);
     navigate(`/chat?chat=${chatId}`);
   };
 

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useChatSessions } from '@/hooks/use-chat-sessions';
 import { Message } from '@/types/chat';
 import { useAuth } from '@/contexts/AuthContext';
-import { startNewSession } from '../services/api';
+import { startNewSession, sendMessage } from '../services/api';
 
 interface ChatContextType {
   messages: Message[];
@@ -87,21 +87,87 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     init();
   }, [user, location.search, location.pathname]);
 
-  // Update setMessages to handle URL updates properly
+  // Update setMessages to handle real message sending
   const setMessages = async (newMessages: Message[]) => {
-    if (currentSessionId) {
-      updateSession(currentSessionId, newMessages, backendSessionId || undefined);
-    } else if (newMessages.length > 0) {
-      let sessionBackendId = backendSessionId;
-      if (!sessionBackendId) {
-        sessionBackendId = await initializeBackendSession();
+    try {
+      if (currentSessionId) {
+        // Get the last message (the new user message)
+        const lastMessage = newMessages[newMessages.length - 1];
+        
+        // Only send if it's a user message
+        if (!lastMessage.isAI) {
+          // First update UI with user's message
+          updateSession(currentSessionId, newMessages, backendSessionId || undefined);
+          
+          // Send message to backend
+          const response = await sendMessage(
+            backendSessionId!, 
+            lastMessage.content,
+            lastMessage.images?.map(img => URL.createObjectURL(img)),
+            lastMessage.files?.map(file => URL.createObjectURL(file))
+          );
+
+          // Create AI response message
+          const aiMessage: Message = {
+            id: Date.now().toString(),
+            content: response,
+            timestamp: new Date(),
+            isAI: true
+          };
+
+          // Update messages with AI response
+          const updatedMessages = [...newMessages, aiMessage];
+          updateSession(currentSessionId, updatedMessages, backendSessionId || undefined);
+        }
+      } else if (newMessages.length > 0) {
+        // Handle new session creation
+        let sessionBackendId = backendSessionId;
+        if (!sessionBackendId) {
+          sessionBackendId = await initializeBackendSession();
+        }
+        if (sessionBackendId) {
+          const newSessionId = createNewSession(newMessages[0], sessionBackendId);
+          
+          // First update UI with user's message
+          updateSession(newSessionId, newMessages, sessionBackendId);
+          
+          // Send message to backend
+          const response = await sendMessage(
+            sessionBackendId,
+            newMessages[0].content,
+            newMessages[0].images?.map(img => URL.createObjectURL(img)),
+            newMessages[0].files?.map(file => URL.createObjectURL(file))
+          );
+
+          // Create AI response message
+          const aiMessage: Message = {
+            id: Date.now().toString(),
+            content: response,
+            timestamp: new Date(),
+            isAI: true
+          };
+
+          // Update messages with AI response
+          const updatedMessages = [...newMessages, aiMessage];
+          updateSession(newSessionId, updatedMessages, sessionBackendId);
+          
+          // Update URL with new chat ID
+          navigate(`/chat?chat=${newSessionId}`, { replace: true });
+          setCurrentSessionId(newSessionId);
+        }
       }
-      if (sessionBackendId) {
-        const newSessionId = createNewSession(newMessages[0], sessionBackendId);
-        updateSession(newSessionId, newMessages, sessionBackendId);
-        // Update URL with new chat ID after first message
-        navigate(`/chat?chat=${newSessionId}`, { replace: true });
-        setCurrentSessionId(newSessionId);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        content: "Sorry, I encountered an error processing your message. Please try again.",
+        timestamp: new Date(),
+        isAI: true
+      };
+      const updatedMessages = [...newMessages, errorMessage];
+      if (currentSessionId) {
+        updateSession(currentSessionId, updatedMessages, backendSessionId || undefined);
       }
     }
   };

@@ -10,7 +10,6 @@ import { SignIn } from './pages/SignIn';
 import { SignUp } from './pages/SignUp';
 import { Contact } from './pages/Contact';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { ChatProvider } from './contexts/ChatContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
 import './index.css';
 
@@ -20,13 +19,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return user ? children : <Navigate to="/signin" />;
 };
 
-// Chat route with ChatProvider and WebSocketProvider
+// Chat route with WebSocketProvider only (removed ChatProvider)
 const ChatRoute = () => (
-  <ChatProvider>
-    <WebSocketProvider>
-      <App />
-    </WebSocketProvider>
-  </ChatProvider>
+  <WebSocketProvider>
+    <App />
+  </WebSocketProvider>
 );
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

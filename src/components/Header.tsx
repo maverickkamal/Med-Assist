@@ -1,13 +1,30 @@
 import { Button } from '@/components/ui/button';
 import { Star, StarOff, Share2 } from 'lucide-react';
+import { useChatStore } from '@/store/chat-store';
 
-interface HeaderProps {
-  isStarred: boolean;
-  onStarClick: () => void;
-  onShare: () => void;
-}
+export function Header() {
+  const { 
+    currentSession: getCurrentSession,
+    currentSessionId,
+    toggleStar,
+    exportChat
+  } = useChatStore();
 
-export function Header({ isStarred, onStarClick, onShare }: HeaderProps) {
+  const currentSession = getCurrentSession();
+  const isStarred = currentSession?.isStarred || false;
+
+  const handleStarClick = () => {
+    if (currentSessionId) {
+      toggleStar(currentSessionId);
+    }
+  };
+
+  const handleShare = () => {
+    if (currentSession) {
+      exportChat(currentSession.messages);
+    }
+  };
+
   return (
     <div className="border-b border-zinc-800 bg-zinc-900/50 backdrop-blur-xl">
       <div className="h-16 px-4 flex items-center justify-end">
@@ -16,7 +33,7 @@ export function Header({ isStarred, onStarClick, onShare }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onStarClick}
+            onClick={handleStarClick}
             className="text-zinc-400 hover:text-yellow-400"
           >
             {isStarred ? (
@@ -28,7 +45,7 @@ export function Header({ isStarred, onStarClick, onShare }: HeaderProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={onShare}
+            onClick={handleShare}
             className="text-zinc-400 hover:text-zinc-200"
           >
             <Share2 className="h-5 w-5" />

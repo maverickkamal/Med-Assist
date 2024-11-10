@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useChat } from '@/contexts/ChatContext';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -20,6 +18,8 @@ import {
   Star,
   Trash
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useChatStore } from '@/store/chat-store';
 
 interface SidebarProps {
   recentChats: { id: string; title: string; daysAgo: string }[];
@@ -41,9 +41,7 @@ export function Sidebar({
   onDeleteChat
 }: SidebarProps) {
   const { user, signOut } = useAuth();
-  const { resetChat } = useChat();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleSignOut = async () => {
     try {
@@ -52,10 +50,6 @@ export function Sidebar({
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
-
-  const handleNewChat = async () => {
-    await resetChat();
   };
 
   // Only show first 5 recent chats in sidebar
@@ -110,7 +104,7 @@ export function Sidebar({
       {/* New Chat Button */}
       <div className="p-4">
         <Button 
-          onClick={handleNewChat}
+          onClick={onNewChat}
           className="w-full bg-zinc-800 hover:bg-zinc-700"
         >
           <PlusCircle className="mr-2 h-4 w-4" />
